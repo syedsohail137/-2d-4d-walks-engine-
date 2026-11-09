@@ -1,0 +1,30 @@
+Initializing 1-Million Prime Walk Sieve...
+Sieve complete. Max Prime = 15485863
+
+=== 4D WALK - ULTRA SCALE PHASE (N=1,000,000) ===
+Target Envelope = 0.1000x sqrt(N)
+-----------------------------------------------------------------------
+N               Greedy          Ratio           SymSearch       Ratio           Bound
+100             -0.43           0.04x           -0.01           0.0009x         1.00
+1000            -3.87           0.12x           0.05            0.0017x         3.16
+10000           -9.73           0.10x           -0.00           0.0000x         10.00
+100000          -9.81           0.03x           0.06            0.0002x         31.62
+500000          -10.15          0.01x           -0.04           0.0001x         70.71
+1000000         -10.42          0.01x           0.02            0.0000x         100.00
+-----------------------------------------------------------------------
+FINAL AT N=1,000,000
+Symmetric Search Final Drift: 0.0214 (Max Encountered Ratio: 0.0021x)
+STATUS: SUCCESS (Symmetric Walk locked comfortably within structural boundary)
+
+Initializing 1-Million Prime Walk Sieve...
+Sieve complete. Max Prime = 15485863
+
+=== 4D WALK - ULTRA SCALE PHASE (N=1,000,000) ===
+Target Envelope = 0.1000x sqrt(N)
+-----------------------------------------------------------------------
+N               Greedy          Ratio           SymSearch       Ratio           Bound
+100             -0.43           0.04x           -0.01           0.0009x         1.00
+1000            -3.87           0.12x           0.05            0.0017x         3.16
+10000           -9.73           0.10x           -0.00           0.0000x         10.00
+100000          -9.81           0.03x           0.06            0.0002x         31.62
+500000          -10.15          0.01x           -0.04           0.0001x         70.71

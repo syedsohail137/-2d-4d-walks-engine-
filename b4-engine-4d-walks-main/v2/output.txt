@@ -1,0 +1,18 @@
+1000000000[INIT] Running Benchmarks for Scaling Horizons...
+----------------------------------------------------------------------------------------
+ > Horizon Limit (N)       : 100000
+ > Execution Runtime        : 7.40939 ms
+ > Global Net Trajectory Drift: 2586.36
+ > Ultimate Riemann Bound   : 316.228
+ > Global Braid Twist Index : 2826232
+ > Critical Shift Gaps      : 0 nodes leaked through
+----------------------------------------------------------------------------------------
+ > Horizon Limit (N)       : 1000000
+ > Execution Runtime        : 100.766 ms
+ > Global Net Trajectory Drift: 40433.3
+ > Ultimate Riemann Bound   : 1000
+ > Global Braid Twist Index : 118787432
+ > Critical Shift Gaps      : 0 nodes leaked through
+----------------------------------------------------------------------------------------
+[NOTE] For N=100M, run on an enterprise multicore server environment.
+
