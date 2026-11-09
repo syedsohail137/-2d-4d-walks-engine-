@@ -1,78 +1,53 @@
-# Blue-Engine Computational Optimization Blueprint (V4)
-## Advanced Discrepancy Minimization Engine over Prime-Lattice Vector Space
+# 2D–4D Walks Engine
 
-An ultra-low-latency, deterministic C++ optimization framework designed for multi-dimensional discrete discrepancy minimization. By transforming number-theoretic arithmetic factorization sequences into geometric steps, this engine bypasses the explosive floating-point and sampling constraints of classic randomized Gibbs-Boltzmann potentials. 
+A collection of C++ experiments exploring bounded walks, prime-lattice coordinates, discrepancy minimization, and phase-modulated trajectories. The repository also contains supporting mathematical write-ups, generated data, plots, and Python visualization code.
 
-Instead, it implements a completely deterministic, non-exponential **Logarithmic Barrier Function** combined with **Wolfovitz-Vector Balancing**, $O(1)$ group-theoretic analytic sign projections, and a 2-prime multi-step predictive horizon queue.
+> **Scope note:** This repository contains several related but separately organized experiments. The root-level build instructions below apply specifically to the small C++17 executable in `src/`; other folders may have their own code and instructions. The mathematical models and empirical results are exploratory and should not be read as formal proofs or production guarantees.
 
----
+## Repository contents
 
-## 🚀 Key Features
+| Path | Contents |
+| --- | --- |
+| `src/` | Root C++17 demo: generates primes up to 2,000, decomposes them into four-square coordinates, applies phase modulation and sign selection, and writes a CSV results file. |
+| `b4-engine-4d-walks-main/` | A separate 4D walk simulation project, with its own README and source tree. |
+| `Time-Variant Bounded Random Walk/` | 2D/4D bounded-walk experiments and supporting paper/data files. |
+| `Bound-GBM-CIR/`, `Bound-GBM-CIR-MonteCarlo/` | Bounded stochastic-process experiments. |
+| `Discrete Lyapunov Optimization/`, `Fermat-Clifford Phase Stabilization & Dirichlet L-Function Engine/`, `SO2SO3Clifford/`, `asymptotic-hyperspace/`, `comparison/` | Additional optimization, phase, geometry, and comparison experiments. |
+| `paper_draft.tex` and PDF files | Mathematical notes and project write-ups. |
+| `plot_generator.py`, `drift_compression_plot.png` | Plotting script and example plot. |
 
-### 1. Dual Number-Theoretic Coordinate Sifting Engines
-* **2D Fermat Sieve:** Extracts unique integer coordinates $(x, y) \in \mathbb{N}^2$ matching $x^2 + y^2 = p$ for primes where $p \equiv 1 \pmod 4$.
-* **4D Jacobi Quad Manifold:** Expands across the full prime continuum up to $N = 1,000,000$ utilizing $a^2 + b^2 + c^2 + d^2 = p$. Integrates Legendre's Three-Square Theorem bitwise pre-checks (`(rem_a & 7) == 7`) to prune non-decomposable remainder branches in $O(1)$.
+## Build and run the root demo
 
-### 2. $O(1)$ Demiregular Hyperoctahedral Symmetry Reductions
-* Eliminates the combinatorial burden of scanning all 384 structural valid sign/permutation configurations for 4D walk updates.
-* Leverages structural invariance under the action of the **$D_4$ Coxeter group** to analytically determine optimal sign steps $s_i \in \{-1, 1\}$ directly opposing the running error accumulation vector without searching loops.
+### Requirements
 
-### 3. Interior Point Method (IPM) Logarithmic Barrier
-* Replaces volatile exponential functions ($\exp(-\langle S, v \rangle / T)$) with a strict, dynamically scaling boundary barrier: 
-  $$\mathcal{B}_n = 1.3 \sqrt{p_n}$$
-* Guarantees structural boundary enforcement by letting the potential penalty spike to infinity as tracking coordinates approach the ceiling margin ($\lim_{S_i \to \mathcal{B}_n^-} \Phi_n(S) = +\infty$).
+- CMake 3.10 or newer
+- A C++17-capable compiler (for example, GCC, Clang, or MSVC)
 
-### 4. 2-Prime Predictive Horizon Look-Ahead Queues
-* Prevents the engine from falling victim to the **Greedy Myopic Fallacy** (geometric dead-ends where all local moves trigger boundary penalties).
-* Tracks a 2-step mini-max look-ahead tree scoring combinations of the current ($n$) and subsequent ($n+1$) prime step simultaneously to intercept traps early.
+### Build
 
-### 5. Riemann Zeta Zeros Phase Modulation
-* Projects walk vector spaces across an actively warping manifold modulated by the non-trivial zeros spectrum of the Riemann Zeta Function ($\gamma_k$).
-* Averages a 2-component phase array ($\cos(\gamma \ln p), \sin(\gamma \ln p)$) over 100 certified critical zeros to guarantee asymptotic martingale stability.
+Run these commands from the repository root:
 
----
-
-## 📊 Core Architecture Overview
-
-| System Parameter | 2D Clifford Algebra Engine | 4D Hyperoctahedral Engine |
-| :--- | :--- | :--- |
-| **Coordinate Basis** | Fermat Two-Square Theorem | Jacobi Four-Square Theorem |
-| **Symmetry Group Reduction**| Dihedral Symmetries ($D_4$) | Hyperoctahedral Symmetries ($D_4$) |
-| **Search Horizons** | Local Step Optimization | 2-Prime Predictive Looking Queue |
-| **Manifold Space** | Flat Euclidean Metric Lattice | Riemann Zeta Zeros Phase ($\gamma_k$) |
-| **Enforcement Ceiling** | Log-Barrier $-\ln(\mathcal{B}^2 - S_i^2)$ | Mini-Max Predictive Path Barrier |
-
----
-
-## 🌐 Cross-Disciplinary Applied Projections
-
-* **Quantitative Asset Allocation:** High-frequency, low-latency market-neutral risk balancing loops. Replaces heavy transcendental functions with integer arithmetic perfectly suited for hardware acceleration (FPGA/GPU execution) within microsecond execution windows.
-* **Distributed Network Load Balancers:** Maps packet payloads into orthogonal coordinates to proactively route data traffic away from vanishing margins, ensuring predictable queue depths and flat latencies across parallel pipelines.
-* **Hyper-Uniform Point Generation:** Replaces standard pseudo-random Monte Carlo processes with low-discrepancy grid sets, accelerating sampling efficiency toward the theoretical limit of $O(1/N)$.
-
----
-
-## 🛠 Building and Execution
-
-### Prerequisites
-* OpenMP 4.5+ capable compiler (e.g., `GCC 9+`, `Clang 10+`)
-* C++20 compliant standard library
-* CMake 3.22+
-
-### Quick Start
 ```bash
-# Clone the repository
-git clone https://github.com
-cd 4d-gauge-orbit-optimization-engine-v2
-
-# Build the codebase
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j\$(nproc)
-
-# Run the simulation engine benchmarking suite
-./blue_engine_minimizer --limit 1000000 --horizon 2
+cmake -S src -B build
+cmake --build build --config Release
 ```
 
-## 📜 Academic Reference
-The exact mathematical derivations, proofs concerning Lemma 2's expanded safety frontiers, and structural stability boundaries are cataloged within the companion LaTeX blueprint file: `advanced_discrepancy_minimization.tex`.
+The executable is named `4D_Engine` (on Windows, it may be under `build/Release/`). For example, on Linux or macOS:
+
+```bash
+./build/4D_Engine
+```
+
+The program writes `mertens_drift_high_res.csv` to its **current working directory** and prints selected results to the terminal. The current root demo uses a prime limit of 2,000, embedded phase constants, and a square-root displacement comparison; these settings are defined in `src/main.cpp`.
+
+## Working with the other experiments
+
+The other directories are standalone projects or research artifacts rather than targets of the root `src/CMakeLists.txt`. See any directory-specific README for its own prerequisites and commands. Results may depend on the particular implementation and parameters used in that subproject.
+
+## Research materials
+
+The repository includes papers and LaTeX drafts discussing the mathematical motivation behind the experiments. These documents describe proposed models and analyses; validate assumptions and reproduce results independently before relying on them.
+
+## License
+
+No license is specified at the repository root. Unless a license is added, reuse and redistribution are subject to the repository owner's rights. Check individual subdirectories for any separate license files.
