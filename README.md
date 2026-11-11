@@ -1,73 +1,47 @@
 # 2D–4D Walks Engine
 
-A collection of C++ experiments exploring bounded walks, prime-lattice coordinates, discrepancy minimization, and phase-modulated trajectories. The repository also contains supporting mathematical write-ups, generated data, plots, and Python visualization code.
+This repository collects several standalone C++ experiments related to bounded random walks, prime lattice mappings, stochastic simulation, and spectral/number-theoretic analysis. The modules are intentionally independent and are organized as separate subdirectories.
 
-> **Scope note:** This repository contains several related but separately organized experiments. The root-level build instructions below apply specifically to the small C++17 executable in `src/`; other folders may have their own code and instructions. The mathematical models and empirical results are exploratory and should not be read as formal proofs or production guarantees.
+## Repository layout
 
-## Repository contents
+- `src/` — root demo; builds a small C++17 program that generates primes, maps them into four-square decompositions, and writes CSV output.
+- `v6reverse/` — reverse lookup engine for the first Riemann zeros and prime-based determinant search.
+- `b4-engine-4d-walks-main/` — 4D walk engine project with multiple variants (`v2`, `V3`, etc.).
+- `Time-Variant Bounded Random Walk/` — bounded walk and discrepancy-minimization experiments.
+- `Bound-GBM-CIR/` and `Bound-GBM-CIR-MonteCarlo/` — SDE simulation and lattice-bound validation studies.
+- `Discrete Lyapunov Optimization/` — Lyapunov-style control experiments over hyperoctahedral transformations.
+- `Fermat-Clifford Phase Stabilization & Dirichlet L-Function Engine/` — prime filtering with Clifford and Dirichlet-style spectral analysis.
+- `SO2SO3Clifford/` — Clifford and rotation-group experimental work.
+- `asymptotic-hyperspace/` — quaternionic / hyperspace prototype and supporting documentation.
+- `comparison/` — comparison utilities and output files.
 
-| Path | Contents |
-| --- | --- |
-| `src/` | Root C++17 demo: generates primes up to 2,000, decomposes them into four-square coordinates, applies phase modulation and sign selection, and writes a CSV results file. |
-| `b4-engine-4d-walks-main/` | A separate 4D walk simulation project, with its own README and source tree. |
-| `Time-Variant Bounded Random Walk/` | 2D/4D bounded-walk experiments and supporting paper/data files. |
-| `Bound-GBM-CIR/`, `Bound-GBM-CIR-MonteCarlo/` | Bounded stochastic-process experiments. |
-| `Discrete Lyapunov Optimization/`, `Fermat-Clifford Phase Stabilization & Dirichlet L-Function Engine/`, `SO2SO3Clifford/`, `asymptotic-hyperspace/`, `comparison/` | Additional optimization, phase, geometry, and comparison experiments. |
-| `paper_draft.tex` and PDF files | Mathematical notes and project write-ups. |
-| `plot_generator.py`, `drift_compression_plot.png` | Plotting script and example plot. |
+## Root demo build
 
-## Build and run the root demo
+Requirements:
+- CMake 3.10+
+- C++17 compiler
 
-### Requirements
-
-- CMake 3.10 or newer
-- A C++17-capable compiler (for example, GCC, Clang, or MSVC)
-
-### Build
-
-Run these commands from the repository root:
+Build:
 
 ```bash
 cmake -S src -B build
 cmake --build build --config Release
 ```
 
-The executable is named `4D_Engine` (on Windows, it may be under `build/Release/`). For example, on Linux or macOS:
+Run:
 
 ```bash
 ./build/4D_Engine
 ```
 
-The program writes `mertens_drift_high_res.csv` to its **current working directory** and prints selected results to the terminal. The current root demo uses a prime limit of 2,000, embedded phase constants, and a square-root displacement comparison; these settings are defined in `src/main.cpp`.
+The program writes CSV output in the current working directory and prints summary information to the terminal.
 
-## Working with the other experiments
+## Notes
 
-The other directories are standalone projects or research artifacts rather than targets of the root `src/CMakeLists.txt`. See any directory-specific README for its own prerequisites and commands. Results may depend on the particular implementation and parameters used in that subproject.
-
-## Research materials
-
-The repository includes papers and LaTeX drafts discussing the mathematical motivation behind the experiments. These documents describe proposed models and analyses; validate assumptions and reproduce results independently before relying on them.
+- Each subdirectory is a separate project or research artifact.
+- Some directories contain experimental scripts, PDFs, and generated output files rather than a conventional build.
+- For precise usage for a given subproject, consult the README in that directory.
 
 ## License
 
-MIT License
-
-Copyright (c) 2026 Syed Sohail
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT License.
