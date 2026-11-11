@@ -1,233 +1,247 @@
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <fstream>
-#include <string>
-#include <algorithm>
-#include <iomanip>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 #include "spectral_inversion.h"
 
-// -------------------------------------------------------------------
-// Clean, Exact Interval Infrastructure for Structural Proof Bounding
-// -------------------------------------------------------------------
-struct Interval {
-    double inf;
-    double sup;
-    Interval(double v) : inf(v), sup(v) {}
-    Interval(double l, double u) : inf(l), sup(u) {}
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <utility>
+#include <vector>
 
-    Interval operator+(const Interval& o) const { return {inf + o.inf, sup + o.sup}; }
-    Interval operator-(const Interval& o) const { return {inf - o.sup, sup - o.inf}; }
-    Interval operator*(const Interval& o) const {
-        double v1 = inf * o.inf, v2 = inf * o.sup, v3 = sup * o.inf, v4 = sup * o.sup;
-        return { std::min({v1, v2, v3, v4}), std::max({v1, v2, v3, v4}) };
-    }
-    bool is_subset_of(const Interval& o) const { return (inf > o.inf && sup < o.sup); }
-    bool intersects(const Interval& o) const { return !(sup < o.inf || inf > o.sup); }
-    double midpoint() const { return 0.5 * (inf + sup); }
-};
+namespace {
 
-enum KrawczykState { PROVEN_UNIQUE, PROVEN_EMPTY, INDETERMINATE };
+// Sieve of Eratosthenes generating the first n primes
+std::vector<long long> generate_primes(std::size_t n) {
+    if (n == 0) return {};
+    long long limit = (n < 6)
+        ? 15
+        : static_cast<long long>(n * (std::log(static_cast<double>(n)) +
+                                      std::log(std::log(static_cast<double>(n)))));
 
-struct CircleSolution {
-    int first;
-    int second;
-    bool found;
-};
-// Forward declaration so evaluate_phase_krawczyk can use it
-KrawczykState resolve_via_bisection(double t_center, double radius, int prime, double target_theta, int depth);
-
-// Pure 1D Krawczyk Operator Evaluation
-KrawczykState evaluate_phase_krawczyk(double t_center, double radius, int prime, double target_theta, int depth = 0) {
-    Interval box(t_center - radius, t_center + radius);
-    double t0 = box.midpoint();
-    double log_p = std::log(static_cast<double>(prime));
-
-    double F_t0 = t0 * log_p - target_theta;
-    Interval J_box(log_p, log_p);
-    double J_t0 = log_p;
-
-    // Fixed depth-guard condition using the newly passed depth variable
-    if (depth > 12) {
-        return INDETERMINATE; 
-    }
-    
-    double new_radius = radius * 0.5;
-    KrawczykState left = resolve_via_bisection(t_center - new_radius, new_radius, prime, target_theta, depth + 1);
-    if (left == PROVEN_UNIQUE) return PROVEN_UNIQUE;
-    
-    KrawczykState right = resolve_via_bisection(t_center + new_radius, new_radius, prime, target_theta, depth + 1);
-    if (right == PROVEN_UNIQUE) return PROVEN_UNIQUE;
-    if (left == PROVEN_EMPTY && right == PROVEN_EMPTY) return PROVEN_EMPTY;
-    
-    return INDETERMINATE;
-}
-
-// Bisection Engine implementation matching your layout requirements
-KrawczykState resolve_via_bisection(double t_center, double radius, int prime, double target_theta, int depth = 0) {
-    // Basic interval validation for Krawczyk operator evaluation step
-    double log_p = std::log(static_cast<double>(prime));
-    double t0 = t_center;
-    double F_t0 = t0 * log_p - target_theta;
-    
-    // Check if 0 is enclosed inside the Krawczyk image evaluation mapping
-    // K(X) = t0 - F(t0)/Y + (1 - J(X)/Y)(X - t0)
-    double Y = log_p; 
-    double mid_eval = t0 - (F_t0 / Y);
-    Interval X(t_center - radius, t_center + radius);
-    Interval J_box(log_p, log_p);
-    
-    // Compute Krawczyk Interval Image
-    Interval K_box = Interval(mid_eval) + (Interval(1.0) - J_box * Interval(1.0 / Y)) * (X - Interval(t0));
-    
-    if (K_box.is_subset_of(X)) {
-        return PROVEN_UNIQUE;
-    }
-    if (!K_box.intersects(X)) {
-        return PROVEN_EMPTY;
-    }
-    
-    // Fall back to further subdivision via evaluate_phase_krawczyk
-    return evaluate_phase_krawczyk(t_center, radius, prime, target_theta, depth);
-}
-
-
-// Sieve of Eratosthenes with upper bound estimation
-std::vector<int> generate_primes(int n) {
-    if (n < 1) return {};
-    int limit = (n < 6) ? 15 : static_cast<int>(n * (std::log(n) + std::log(std::log(n))));
-    std::vector<bool> is_p(limit + 1, true);
-    std::vector<int> primes;
+    std::vector<bool> is_prime(static_cast<std::size_t>(limit + 1), true);
+    std::vector<long long> primes;
     primes.reserve(n);
-    for (int p = 2; p <= limit; ++p) {
-        if (is_p[p]) {
+
+    for (long long p = 2; p < limit + 1; ++p) {
+        if (is_prime[static_cast<std::size_t>(p)]) {
             primes.push_back(p);
-            if (static_cast<int>(primes.size()) == n) break;
-            for (long long i = 1LL * p * p; i <= limit; i += p) is_p[i] = false;
+            if (primes.size() == n) break;
+            for (long long i = p * p; i < limit + 1; i += p) {
+                is_prime[static_cast<std::size_t>(i)] = false;
+            }
         }
     }
     return primes;
 }
 
-// Optimized Two-Pointer integer approach avoiding float loops
-CircleSolution solve_two_squares(long long target) {
-    if (target < 0) return {0, 0, false};
+// Finds all non-negative integer pairs (X, Y) with X >= Y such that X^2 + Y^2 = target
+std::vector<std::pair<long long, long long>> solve_two_squares_all(long long target) {
+    if (target < 0) return {};
+    std::vector<std::pair<long long, long long>> solutions;
     long long left = 0;
     long long right = static_cast<long long>(std::sqrt(static_cast<double>(target)));
-    while (left <= right) {
-        long long current_sum = left * left + right * right;
-        if (current_sum == target) return {static_cast<int>(right), static_cast<int>(left), true};
-        if (current_sum < target) left++; else right--;
+
+    while (left < right + 1) {
+        long long sum = left * left + right * right;
+        if (sum == target) {
+            solutions.emplace_back(right, left);
+            ++left;
+            --right;
+        } else if (sum < target) {
+            ++left;
+        } else {
+            --right;
+        }
     }
-    return {0, 0, false};
+    return solutions;
 }
 
-bool unpack_quad(int p, int D, int& a, int& b, int& c, int& d) {
-    long long t1 = p + 2LL * D;
-    long long t2 = p - 2LL * D;
-    CircleSolution p1 = solve_two_squares(t1);
-    CircleSolution p2 = solve_two_squares(t2);
-    if (!p1.found || !p2.found) return false;
-    int X1 = p1.first, Y1 = p1.second;
-    int X2 = p2.first, Y2 = p2.second;
-    if ((X1 + X2) % 2 == 0 && (Y1 + Y2) % 2 == 0) {
-        a = (X1 + X2) / 2; d = (X1 - X2) / 2;
-        b = (Y1 + Y2) / 2; c = (Y2 - Y1) / 2;
-        return true;
-    }
-    X2 = -X2;
-    if ((X1 + X2) % 2 == 0 && (Y1 + Y2) % 2 == 0) {
-        a = (X1 + X2) / 2; d = (X1 - X2) / 2;
-        b = (Y1 + Y2) / 2; c = (Y2 - Y1) / 2;
-        return true;
+// Exact O(sqrt(p)) Diophantine solver for:
+//   a^2 + b^2 + c^2 + d^2 = p
+//   a*d - b*c = D
+bool solve_lattice(long long p, long long D, spectral::QuaternionLattice& out) {
+    // Cauchy-Schwarz bound: |D| <= p / 2
+    if (std::llabs(D) > p / 2) return false;
+
+    auto raw1 = solve_two_squares_all(p + 2 * D);
+    auto raw2 = solve_two_squares_all(p - 2 * D);
+    if (raw1.empty() || raw2.empty()) return false;
+
+    // Expand (X, Y) to include (Y, X) so all parity alignments are tested
+    auto expand_pairs = [](const std::vector<std::pair<long long, long long>>& raw) {
+        std::vector<std::pair<long long, long long>> pairs;
+        pairs.reserve(raw.size() * 2);
+        for (const auto& pr : raw) {
+            pairs.push_back(pr);
+            if (pr.first != pr.second) {
+                pairs.emplace_back(pr.second, pr.first);
+            }
+        }
+        return pairs;
+    };
+
+    const auto pairs1 = expand_pairs(raw1);
+    const auto pairs2 = expand_pairs(raw2);
+
+    for (const auto& p1 : pairs1) {
+        long long X1 = p1.first;
+        long long Y1 = p1.second;
+        for (const auto& p2 : pairs2) {
+            long long X2 = p2.first;
+            long long Y2 = p2.second;
+
+            for (long long sx1 : {1LL, -1LL}) {
+                if (X1 == 0 && sx1 == -1) continue;
+                for (long long sy1 : {1LL, -1LL}) {
+                    if (Y1 == 0 && sy1 == -1) continue;
+                    for (long long sx2 : {1LL, -1LL}) {
+                        if (X2 == 0 && sx2 == -1) continue;
+                        for (long long sy2 : {1LL, -1LL}) {
+                            if (Y2 == 0 && sy2 == -1) continue;
+
+                            long long x1 = sx1 * X1;
+                            long long y1 = sy1 * Y1;
+                            long long x2 = sx2 * X2;
+                            long long y2 = sy2 * Y2;
+
+                            if (((x1 + x2) % 2 == 0) && ((y1 + y2) % 2 == 0)) {
+                                long long a = (x1 + x2) / 2;
+                                long long d = (x1 - x2) / 2;
+                                long long b = (y1 + y2) / 2;
+                                long long c = (y2 - y1) / 2;
+
+                                if (a * a + b * b + c * c + d * d == p &&
+                                    a * d - b * c == D) {
+                                    out = {a, b, c, d};
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     return false;
 }
 
-int main() {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(NULL);
+spectral::SpectralNode invert_node(std::size_t idx, long long p,
+                                   long long max_steps, bool use_random_baseline) {
+    spectral::SpectralNode node;
+    node.index = static_cast<int>(idx + 1);
+    node.riemann_zero_gamma = spectral::RIEMANN_GAMMAS[idx];
+    node.prime = p;
 
-    const int N = 1000;
-    std::vector<int> primes = generate_primes(N);
-    std::vector<SpectralNode> nodes;
-    nodes.reserve(N);
+    double theta = std::fmod(node.riemann_zero_gamma * std::log(static_cast<double>(p)),
+                             2.0 * spectral::PI);
+    if (theta < 0.0) theta += 2.0 * spectral::PI;
+    node.phase_angle_rad = theta;
 
-    size_t active_nodes = std::min(static_cast<size_t>(N), RIEMANN_GAMMAS.size());
+    if (use_random_baseline) {
+        unsigned long long hash =
+            static_cast<unsigned long long>(idx) * 2654435761ULL +
+            static_cast<unsigned long long>(p);
+        long long span = p / 2;
+        node.d_initial = static_cast<long long>(hash % static_cast<unsigned long long>(2 * span + 1)) - span;
+    } else {
+        node.d_initial = std::llround(static_cast<double>(p) * 0.5 * std::cos(theta));
+    }
 
-    for (size_t i = 0; i < active_nodes; ++i) {
-        SpectralNode node;
-        node.index = static_cast<int>(i + 1);
-        node.riemann_zero_gamma = RIEMANN_GAMMAS[i]; 
-        node.prime = primes[i];
-        
-        node.phase_angle_rad = std::fmod(node.riemann_zero_gamma * std::log(static_cast<double>(node.prime)), 2.0 * M_PI);
-        if (node.phase_angle_rad < 0) node.phase_angle_rad += 2.0 * M_PI;
+    // Step 1: Direct determinant projection
+    if (solve_lattice(p, node.d_initial, node.q)) {
+        node.d_converged = node.d_initial;
+        node.search_steps = 0;
+        node.adjustment = 0;
+        node.state = "Exact Match";
+        return node;
+    }
 
-        double local_mod = std::fmod(node.phase_angle_rad, M_PI / 2.0);
-        node.critical_proximity = std::min(local_mod, (M_PI / 2.0) - local_mod);
-        
-        double adaptive_denominator = (node.critical_proximity < 0.1) ? 1.8 : 2.5;
-        double max_allowable_D = static_cast<double>(node.prime) / adaptive_denominator; 
-        node.target_determinant_d = static_cast<int>(std::round(max_allowable_D * std::cos(node.phase_angle_rad)));
-        
-        KrawczykState cert = resolve_via_bisection(node.riemann_zero_gamma, 1e-4, node.prime, node.riemann_zero_gamma * std::log(node.prime));
+    // Step 2: Bounded nearest-integer determinant search
+    for (long long step = 1; step < max_steps + 1; ++step) {
+        for (long long delta : {step, -step}) {
+            long long candidate_d = node.d_initial + delta;
+            if (std::llabs(candidate_d) > p / 2) continue;
 
-        // Low-prime structural overrides (Fixes low prime density collapse at Node 2)
-        if (node.prime < 5) {
-            node.target_determinant_d = -1;
-            if (unpack_quad(node.prime, node.target_determinant_d, node.a, node.b, node.c, node.d)) {
-                node.lattice_state = "Certified Clean Lattice";
-            } else {
-                node.lattice_state = "Proven Void Chaos";
-                node.a = 0; node.b = 0; node.c = 0; node.d = 0;
-            }
-        } 
-        else if (unpack_quad(node.prime, node.target_determinant_d, node.a, node.b, node.c, node.d)) {
-            node.lattice_state = (cert == PROVEN_UNIQUE) ? "Certified Clean Lattice" : "Clean Integer Lattice";
-        } 
-        else {
-            bool fixed = false;
-            int dynamic_bound = std::max(static_cast<int>(std::sqrt(static_cast<double>(node.prime))), 15);
-            
-            for (int shift = 1; shift <= dynamic_bound; ++shift) {
-                if (unpack_quad(node.prime, node.target_determinant_d - shift, node.a, node.b, node.c, node.d)) {
-                    node.target_determinant_d -= shift;
-                    node.lattice_state = "Residue Tuned (Interval Verified)";
-                    fixed = true;
-                    break;
-                }
-                if (unpack_quad(node.prime, node.target_determinant_d + shift, node.a, node.b, node.c, node.d)) {
-                    node.target_determinant_d += shift;
-                    node.lattice_state = "Residue Tuned (Interval Verified)";
-                    fixed = true;
-                    break;
-                }
-            }
-            if (!fixed) {
-                node.lattice_state = (cert == PROVEN_EMPTY) ? "Proven Void Chaos" : "Chaos Bound";
-                node.a = 0; node.b = 0; node.c = 0; node.d = 0;
+            if (solve_lattice(p, candidate_d, node.q)) {
+                node.d_converged = candidate_d;
+                node.search_steps = static_cast<int>(step);
+                node.adjustment = std::llabs(candidate_d - node.d_initial);
+                node.state = "Shifted Match";
+                return node;
             }
         }
-        nodes.push_back(node);
+    }
+
+    // Step 3: No representation found within max_steps
+    node.d_converged = node.d_initial;
+    node.search_steps = static_cast<int>(max_steps);
+    node.adjustment = -1;
+    node.state = "No Representation";
+    node.q = {0, 0, 0, 0};
+    return node;
+}
+
+} // namespace
+
+int main() {
+    const std::size_t count = spectral::RIEMANN_GAMMAS.size();
+    const std::vector<long long> primes = generate_primes(count);
+    const long long max_steps = 40;
+
+    std::vector<spectral::SpectralNode> nodes;
+    nodes.reserve(count);
+
+    for (std::size_t i = 0; i < count; ++i) {
+        nodes.push_back(invert_node(i, primes[i], max_steps, false));
     }
 
     std::ofstream out_csv("spectral_nodes.csv");
-    if (out_csv) {
-        out_csv << "Index,Riemann_Zero_Gamma,Prime,Phase_Angle_Rad,Critical_Proximity,Target_Determinant_D,Lattice_State,a,b,c,d\n";
-        out_csv << std::fixed << std::setprecision(8);
-        for (const auto& n : nodes) {
-            out_csv << n.index << "," << n.riemann_zero_gamma << "," << n.prime << ","
-                    << std::setprecision(9) << n.phase_angle_rad << "," << n.critical_proximity << ","
-                    << std::setprecision(0) << n.target_determinant_d << ",\"" << n.lattice_state << "\","
-                    << n.a << "," << n.b << "," << n.c << "," << n.d << "\n";
-        }
-        out_csv.close();
+    if (!out_csv) {
+        std::cerr << "Error: Failed to open spectral_nodes.csv for writing.\n";
+        return 1;
     }
+
+    const std::string header =
+        "Index,Gamma_Full,Prime,Phase,D_Initial,D_Converged,Search_Steps,Adjustment,State,a,b,c,d\n";
+    out_csv << header;
+    std::cout << header;
+
+    for (const auto& n : nodes) {
+        // Verify algebraic invariants before output
+        if (n.state != "No Representation") {
+            long long norm_sq = n.q.a * n.q.a + n.q.b * n.q.b + n.q.c * n.q.c + n.q.d * n.q.d;
+            long long det = n.q.a * n.q.d - n.q.b * n.q.c;
+            if (norm_sq != n.prime || det != n.d_converged) {
+                std::cerr << "Verification failure at Index " << n.index << "\n";
+                return 2;
+            }
+        }
+
+        out_csv << std::fixed
+                << n.index << ","
+                << std::setprecision(15) << n.riemann_zero_gamma << ","
+                << n.prime << ","
+                << std::setprecision(6) << n.phase_angle_rad << ","
+                << n.d_initial << ","
+                << n.d_converged << ","
+                << n.search_steps << ","
+                << n.adjustment << ","
+                << n.state << ","
+                << n.q.a << "," << n.q.b << "," << n.q.c << "," << n.q.d << "\n";
+
+        std::cout << std::fixed
+                  << n.index << ","
+                  << std::setprecision(15) << n.riemann_zero_gamma << ","
+                  << n.prime << ","
+                  << std::setprecision(6) << n.phase_angle_rad << ","
+                  << n.d_initial << ","
+                  << n.d_converged << ","
+                  << n.search_steps << ","
+                  << n.adjustment << ","
+                  << n.state << ","
+                  << n.q.a << "," << n.q.b << "," << n.q.c << "," << n.q.d << "\n";
+    }
+
     return 0;
 }
