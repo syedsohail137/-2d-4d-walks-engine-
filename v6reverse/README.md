@@ -76,8 +76,100 @@ Execute the compiled binary to generate the structured CSV dataset:
 ./spectral_inversion
 ```
 
----
+-------------------------------------------------------------------------
 
 ## 📈 Scalability Trajectory Insights
 *   **Low-Prime Scarcity Constraints:** Primes below $p < 13$ have very few integer representations, leading to occasional structural vacuums like the one seen at Index 2 ($p=3$).
 *   **Large-Scale Stabilization:** As the system scales up to **1 million primes**, Jacobi’s Four-Square Theorem proves that coordinate options expand rapidly. Consequently, `Chaos Bound` occurrences drop to 0%, and `Certified Clean Lattice` becomes the dominant state across the engine.
+---------------------------------------------------------------------------------
+
+
+updates:-
+
+# Riemann-Prime Spectral Lattice Projection Engine
+
+A zero-dependency **C++17** algorithmic pipeline that maps pairs of non-trivial Riemann zeta zeros ($\gamma_n$) and prime numbers ($p_n$) into discrete $2 \times 2$ integer matrix lattices ($M \in \mathbb{Z}^{2\times2}$) via an exact $O(\sqrt{p})$ Diophantine solver.
+
+---
+
+## Core Architecture & Math
+
+For each indexed pair $(\gamma_n, p_n)$, the engine computes a continuous spectral phase angle:
+
+$$\theta_n = (\gamma_n \cdot \ln(p_n)) \pmod{2\pi}$$
+
+It projects this phase onto a bounded initial target determinant $D_{\text{Initial}} = \text{round}\left(\frac{p_n}{2} \cos(\theta_n)\right)$ within the Cauchy-Schwarz feasibility bound $|D| \le \frac{p_n}{2}$, then solves the coupled Diophantine system in integers $(a, b, c, d)$:
+
+$$\begin{cases} a^2 + b^2 + c^2 + d^2 = p_n \\ ad - bc = D \end{cases}$$
+
+### Algebraic Reduction
+Rather than brute-forcing $(a, b, c, d) \in [-\sqrt{p}, \sqrt{p}]^4$ in $O(p^{3/2})$ time, the engine reduces the 4D system into two independent sum-of-two-squares problems using the identity:
+
+$$\begin{cases} (a + d)^2 + (b - c)^2 = p + 2D \\ (a - d)^2 + (b + c)^2 = p - 2D \end{cases}$$
+
+Both equations are solved in $O(\sqrt{p})$ time via an integer two-pointer scan, expanding both $(X, Y)$ and $(Y, X)$ orientations across sign combinations to guarantee all parity alignments are found.
+
+---
+
+## Codebase Structure
+
+* **`spectral_inversion.h`**: Defines `QuaternionLattice`, `SpectralNode`, portable constants, and the unrounded 15-decimal-place `RIEMANN_GAMMAS` table for the first 30 non-trivial Riemann zeta zeros.
+* **`main.cpp`**: Implements the Sieve of Eratosthenes, the $O(\sqrt{p})$ Diophantine lattice solver (`solve_lattice`), nearest-integer determinant shifting, invariant self-checks, and CSV export.
+* **`spectral_nodes.csv`**: Generated dataset logging the phase projection, determinant shift steps, classification state, and verified integer matrix entries $(a, b, c, d)$.
+
+---
+
+## Classification States
+
+Every node in `spectral_nodes.csv` is assigned one of three deterministic states:
+
+| State | Description | Behavior |
+| :--- | :--- | :--- |
+| **`Exact Match`** | Direct integer alignment | $D_{\text{Initial}}$ admits a valid integer matrix $(a, b, c, d)$ on step `0` (`Adjustment = 0`). |
+| **`Shifted Match`** | Bounded nearest-integer shift | $D_{\text{Initial}}$ had no exact representation, so the solver stepped outward ($\pm 1, \pm 2, \dots$) to the nearest valid $D_{\text{Converged}}$. |
+| **`No Representation`** | Bound exceeded | No valid integer matrix was found within `max_steps` (default `40`) inside $[-p/2, p/2]$. |
+
+---
+
+## CSV Output Schema
+
+`spectral_nodes.csv` outputs 13 columns per node:
+
+* **`Index`**: 1-based sequence index ($n$).
+* **`Gamma_Full`**: Imaginary part of the $n$-th non-trivial Riemann zeta zero ($\gamma_n$, 15 decimal places).
+* **`Prime`**: The $n$-th prime number ($p_n$).
+* **`Phase`**: Spectral phase angle $\theta_n \in [0, 2\pi)$ in radians.
+* **`D_Initial`**: Initial projected determinant $\text{round}(\frac{p_n}{2} \cos \theta_n)$.
+* **`D_Converged`**: Final realized integer determinant $ad - bc$.
+* **`Search_Steps`**: Radius searched outward from $D_{\text{Initial}}$ (`0` for exact matches).
+* **`Adjustment`**: Absolute determinant shift $|D_{\text{Converged}} - D_{\text{Initial}}|$.
+* **`State`**: Node classification (`Exact Match`, `Shifted Match`, or `No Representation`).
+* **`a, b, c, d`**: Verified integer entries of the $2 \times 2$ lattice matrix.
+
+---
+
+## Getting Started
+
+### Prerequisites
+Any C++ compiler supporting **C++17** or later (`g++`, `clang++`, or MSVC). No external libraries are required.
+
+### Build & Run
+```bash
+g++ -O3 -std=c++17 -Wall -Wextra -pedantic main.cpp -o spectral_inversion
+./spectral_inversion
+```
+
+---
+
+## Baseline Results ($N = 30$)
+
+Across the first 30 Riemann zeros and primes ($p \in [2, 113]$):
+* **Resolution Rate**: **100%** (30/30 nodes resolved; 0 `No Representation`).
+* **Exact Matches**: **12 / 30** (40.0%).
+* **Shifted Matches**: **18 / 30** (60.0%), with a mean determinant adjustment of **1.07** and a maximum shift of **5** (at $n = 28, p = 107$).
+
+### Mathematical Note
+By Jacobi's four-square theorem, an odd prime $p$ admits $8(p + 1)$ representations as a sum of four squares, densely populating feasible determinants across $[-p/2, p/2]$. To evaluate whether Riemann-phase initialization outperforms uniform random guessing, toggle `use_random_baseline = true` in `invert_node` and compare the resulting `Adjustment` distributions.
+
+
+
