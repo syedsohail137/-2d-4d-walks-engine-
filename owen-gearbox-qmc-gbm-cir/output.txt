@@ -1,0 +1,11 @@
+=== Owen Gearbox - GBM + CIR - Equal-Work Validation ===
+GBM True BS   : 10.450584
+CIR True Bond : 0.958791
+
+GBM MC               | paths=4096 | est=10.440186 | sd=0.068094 | err=0.010397
+GBM Pure Sobol       | paths=4096 | est=10.450848 | sd=0.002418 | err=0.000264
+GBM Gearbox Sym4+CV  | paths=4096 | est=10.441864 | sd=0.000621 | err=0.008719  PASS
+
+CIR MC               | paths=2048 | est=0.958835 | sd=0.000153 | err=0.000044
+CIR Pure Sobol       | paths=2048 | est=0.958756 | sd=0.000024 | err=0.000035
+CIR Gearbox Sym4+CV  | paths=2048 | est=0.958804 | sd=0.000005 | err=0.000013  PASS
