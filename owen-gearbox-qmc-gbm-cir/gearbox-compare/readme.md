@@ -1,52 +1,96 @@
 # One Gearbox: Quasi-Monte Carlo Variance Reduction Engine
 
-A zero-dependency C++17 benchmark demonstrating combined variance reduction for numerical integration and option pricing. It pairs Owen-scrambled Sobol sequences with a 4-point symmetry orbit (`Sym4`) and exact analytical control variates.
+This folder contains a compact C++17 benchmark for a variance-reduction engine used in numerical integration and option pricing. The implementation combines:
+
+- Owen-scrambled Sobol sequences
+- a four-point Sym4 orbit transform
+- an exact control variate with known expectation
+
+The goal is to estimate expectations with much lower sampling variance than standard Monte Carlo while keeping the implementation self-contained and dependency-free.
 
 ## Methodology
 
-The engine evaluates each sample path across three stages:
+The engine evaluates each sample path in three stages:
 
-1. **Owen-Scrambled Sobol Sequence:** Generates low-discrepancy points in $[0, 1)^D$ using 24-dimensional Joe-Kuo direction numbers (`new-joe-kuo-6.21201`) with hash-based bit scrambling across $R = 16$ independent replicates ($N = 4096$ base points).
-2. **`Sym4` Orbit:** Maps each uniform coordinate $u$ to the 4-element orbit $\{u, 1-u, (u+0.5) \bmod 1, 1 - ((u+0.5) \bmod 1)\}$ before applying Acklam's inverse normal CDF approximation.
-3. **Exact Control Variate:** Adjusts the orbit-averaged payoff $f$ using a correlated control $C$ with a known closed-form expectation $\mathbb{E}[C]$ via ordinary least squares:
-   $$\hat{\mu} = \frac{1}{N} \sum_{i=1}^{N} \left( \bar{f}_i - \hat{\beta}(\bar{C}_i - \mathbb{E}[C]) \right)$$
+1. Owen-scrambled Sobol sequence
+   - Generates low-discrepancy points in [0, 1)^D using Joe-Kuo direction numbers and a hash-based bit scrambling step.
+2. Sym4 orbit
+   - Maps each uniform coordinate u to the orbit {u, 1-u, (u+0.5) mod 1, 1-((u+0.5) mod 1)} before applying the inverse normal CDF.
+3. Exact control variate
+   - Adjusts the orbit-averaged payoff using a correlated control C with known mean E[C].
+   - The estimator is of the form:
 
-## Benchmark Results ($N = 4096, R = 16$)
+     \hat{\mu} = \frac{1}{N} \sum_{i=1}^{N} \left( \bar{f}_i - \hat{\beta}(\bar{C}_i - \mathbb{E}[C]) \right)
 
-All models run with $S_0 = 100$, $K = 100$, $r = 0.05$, $\sigma = 0.2$, $T = 1.0$, and $12$ time steps.
+This is intended to reduce variance while preserving accuracy for smooth payoff functions and low-dimensional path models.
 
-| Benchmark | Control Variate ($C$) | Truth | Plain MC SD | Gearbox SD | VRF | \|Bias\| |
+## Included benchmarks
+
+The implementation contains benchmark tests for:
+
+- GBM European call option
+- CIR bond pricing
+- arithmetic Asian option
+- Heston call option
+- American put via least-squares Monte Carlo
+- Kepler mean-E test
+
+The benchmark compares plain Monte Carlo against the Gearbox estimator over 16 replicates with N = 4096 samples per replicate.
+
+## Representative benchmark results
+
+All models use S0 = 100, K = 100, r = 0.05, sigma = 0.2, T = 1.0, and 12 time steps.
+
+| Benchmark | Control variate | Truth | Plain MC SD | Gearbox SD | VRF | |Bias| |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **GBM Call** | Terminal price $S_T$ | `10.4506` | `0.2060` | `0.0006` | **138,565x** | `0.0001` |
-| **CIR Bond** | Terminal short rate $r_T$ | `0.9513` | `0.0002` | `0.0000` | **225x** | `0.0000` |
-| **Asian Arithmetic** | Geometric Asian payoff | `6.1516` | `0.1288` | `0.0019` | **4,597x** | `0.0043` |
-| **Heston Call** | Terminal price $S_T$ | `10.4298` | `0.1563` | `0.0756` | **4.3x** | `0.0305` |
-| **American Put (LSM)** | None (`Sym4` + Owen only) | `6.0310` | `0.1403` | `0.0506` | **7.7x** | `0.0638` |
-| **Kepler Mean $E$** | None (`Sym4` exact) | `3.1416` | — | — | — | `0.0000` |
+| GBM Call | Terminal price S_T | 10.4506 | 0.2060 | 0.0006 | 138,565x | 0.0001 |
+| CIR Bond | Terminal short rate r_T | 0.9513 | 0.0002 | 0.0000 | 225x | 0.0000 |
+| Asian Arithmetic | Geometric Asian payoff | 6.1516 | 0.1288 | 0.0019 | 4,597x | 0.0043 |
+| Heston Call | Terminal price S_T | 10.4298 | 0.1563 | 0.0756 | 4.3x | 0.0305 |
+| American Put (LSM) | None (Sym4 + Owen only) | 6.0310 | 0.1403 | 0.0506 | 7.7x | 0.0638 |
+| Kepler Mean E | None (Sym4 exact) | 3.1416 | — | — | — | 0.0000 |
 
-*Note: VRF (Variance Reduction Factor) is computed as $(\text{SD}_{\text{MC}} / \text{SD}_{\text{OURS}})^2$ across 16 replicates.*
+VRF is computed as (SD_MC / SD_OURS)^2 across 16 replicates.
 
-## Known Limitations
+## Observations
 
-* **Time-Discretization Bias (Heston & CIR):** Full-truncation Euler stepping with 12 monthly steps leaves a residual discretization bias relative to continuous-time analytical truths (`0.0305` on Heston).
-* **In-Sample LSM Bias (American Put):** Least-Squares Monte Carlo regression is fitted and evaluated on the same sample paths without a control variate, introducing a small upward exercise bias (`0.0638`).
-* **Dimensionality:** Direction numbers are included for the first 24 dimensions ($D \le 24$). Higher-dimensional problems require extending `JK_TABLE`.
+- Strong variance reduction is achieved for GBM and Asian-style payoffs.
+- The method works especially well when the payoff exhibits smooth structure and is strongly correlated with a usable control variate.
+- Heston and American option results still improve over plain MC, but the gains are smaller and the remaining bias is more visible.
+- The benchmark demonstrates that Sobol + Sym4 + control variate can be a powerful configuration for low-variance estimation.
 
-## Build & Run
+## Known limitations
 
-Requires a standard C++17 compiler with no external libraries.
+- Time-discretization bias remains in Heston and CIR settings due to finite-step Euler-style simulation.
+- The American put benchmark uses in-sample LSM, which can introduce exercise bias.
+- The implementation supports the first 24 dimensions (D <= 24) due to the available Joe-Kuo direction numbers.
+- The method is a research/demo benchmark, not a general-purpose production pricing framework.
+
+## Build and run
+
+Requires a standard C++17 compiler and no external dependencies.
 
 ```bash
 g++ -O3 -std=c++17 -Wall -Wextra main.cpp -o gearbox
 ./gearbox
 ```
+
+The repository already includes an example `output.txt` generated by the program for reference.
+
+## Files in this folder
+
+- `main.cpp` — core implementation
+- `readme.md` — project overview and benchmark documentation
+- `output.txt` — sample benchmark output
+- `Gearbox.pdf` — supplementary PDF/reference material
+
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is distributed under the MIT License. See the repository root license file if present. If no root license is included in your copy, treat this as a permissive educational project and comply with the MIT terms as applicable.
 
 MIT License
 
-Copyright (c) 2026 [Full Name]
+Copyright (c) 2026 syedsohail137
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -65,4 +109,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
